@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
@@ -14,14 +14,16 @@ class DivinationRequest(BaseModel):
 
 class DivinationResponse(BaseModel):
     """占卜响应模型"""
+    model_config = ConfigDict(
+        from_attributes=True,
+        protected_namespaces=()  # 解决 model_used 字段警告
+    )
+    
     id: int
     question: str
     answer: str
     model_used: str
     created_at: datetime
-    
-    class Config:
-        orm_mode = True
 
 
 # ============ 用户相关模型 ============
@@ -45,14 +47,13 @@ class UserUpdate(UserBase):
 
 class User(UserBase):
     """用户响应模型"""
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     usage_count: int
     is_premium: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
-    class Config:
-        orm_mode = True
 
 
 class UserUsage(BaseModel):
@@ -62,12 +63,57 @@ class UserUsage(BaseModel):
     usage_count: int
     remaining_count: int
     is_premium: bool = False
+
+
+# ============ 认证相关模型 ============
+
+class UserRegister(BaseModel):
+    """用户注册模型"""
+    email: EmailStr
+    password: str
+    confirm_password: str
+    name: Optional[str] = None
+
+
+class UserLogin(BaseModel):
+    """用户登录模型"""
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    """令牌响应模型"""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: User
+
+
+class UserResponse(BaseModel):
+    """用户信息响应模型"""
+    model_config = ConfigDict(from_attributes=True)
     
+    id: int
+    email: str
+    name: str
+    avatar_url: Optional[str] = None
+    is_premium: bool
+    is_verified: bool
+    usage_count: int
+    created_at: datetime
+
+
+class PasswordReset(BaseModel):
+    """密码重置模型"""
+    email: EmailStr
+
 
 # ============ 占卜记录相关模型 ============
 
 class DivinationBase(BaseModel):
     """占卜记录基础模型"""
+    model_config = ConfigDict(protected_namespaces=())  # 解决警告
+    
     question: str
     answer: str
     model_used: str = "deepseek/deepseek-chat-v3-0324"
@@ -84,13 +130,15 @@ class DivinationCreate(DivinationBase):
 
 class Divination(DivinationBase):
     """占卜记录响应模型"""
+    model_config = ConfigDict(
+        from_attributes=True,
+        protected_namespaces=()
+    )
+    
     id: int
     user_id: Optional[int] = None
     session_id: Optional[str] = None
     created_at: datetime
-    
-    class Config:
-        orm_mode = True
 
 
 class DivinationHistory(BaseModel):

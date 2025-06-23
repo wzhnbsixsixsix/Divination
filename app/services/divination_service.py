@@ -68,12 +68,21 @@ class DivinationService:
         
         # 2. 调用占卜API获取结果
         try:
-            answer = await openrouter_service.get_divination_response(
+            answer, prompt_info = await openrouter_service.get_divination_response(
+                db=db,
                 question=question,
-                language=language
+                language=language,
+                divination_type="tarot"
             )
+            
+            if not answer:
+                # 如果API调用失败，使用备用回答
+                answer = f"根据您的问题「{question}」，我为您解读如下：\n\n当前的情况需要您保持耐心和信心。虽然前路可能充满不确定性，但正是这种不确定性为您带来了无限的可能性。\n\n建议您：\n1. 保持积极的心态\n2. 相信自己的直觉\n3. 适时寻求他人的建议\n4. 把握当下的机会\n\n请记住，命运掌握在您自己的手中。"
+                
         except Exception as e:
-            raise ValueError(f"占卜服务暂时不可用: {str(e)}")
+            print(f"OpenRouter API调用失败: {e}")
+            # 使用备用回答
+            answer = f"根据您的问题「{question}」，我为您解读如下：\n\n当前的情况需要您保持耐心和信心。虽然前路可能充满不确定性，但正是这种不确定性为您带来了无限的可能性。\n\n建议您：\n1. 保持积极的心态\n2. 相信自己的直觉\n3. 适时寻求他人的建议\n4. 把握当下的机会\n\n请记住，命运掌握在您自己的手中。"
         
         # 3. 创建占卜记录
         divination = Divination(
@@ -107,10 +116,14 @@ class DivinationService:
         )
         db.add(usage_log)
         
-        db.commit()
-        db.refresh(divination)
-        
-        return divination
+        try:
+            db.commit()
+            db.refresh(divination)
+            return divination
+        except Exception as e:
+            db.rollback()
+            print(f"数据库提交失败: {e}")
+            raise ValueError(f"保存占卜记录失败: {str(e)}")
     
     def get_user_divination_history(
         self,

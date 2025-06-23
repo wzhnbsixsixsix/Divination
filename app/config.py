@@ -1,17 +1,17 @@
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 from typing import List
 import os
 
 
 class Settings(BaseSettings):
     # 数据库配置
-    database_url: str = "postgresql://username:password@localhost:5432/divination_db"
+    database_url: str = "postgresql://postgres:12345678@divination.cluster-chwuqka62eu2.ap-southeast-2.rds.amazonaws.com:5432/divination_db"
     
     # OpenRouter API 配置
-    openrouter_api_key: str = "your_api_key_here"
+    openrouter_api_key: str = "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"
     
     # JWT 配置
-    secret_key: str = "your_secret_key_here"
+    secret_key: str = "your_secret_key_here_change_in_production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
@@ -21,14 +21,15 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,https://fatewave.com"
     
     # OpenRouter 配置
-    openrouter_referer: str = "http://localhost:3000"  # 开发环境用localhost，生产环境用域名
+    openrouter_referer: str = "http://localhost:3000"
     
     # 业务配置
-    free_usage_limit: int = 3
+    free_usage_limit: int = 50  # 登录用户50次免费
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False
+    }
 
     @property
     def cors_origins_list(self) -> List[str]:

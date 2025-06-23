@@ -7,7 +7,7 @@ from datetime import datetime
 
 from .config import settings
 from .database import create_tables
-from .routers import divination
+from .routers import divination, auth
 from .schemas import HealthCheck, ErrorResponse
 
 
@@ -85,6 +85,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # 注册路由
 app.include_router(divination.router)
+app.include_router(auth.router)
 
 
 # 健康检查端点
