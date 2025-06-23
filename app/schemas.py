@@ -8,7 +8,8 @@ from datetime import datetime
 class DivinationRequest(BaseModel):
     """占卜请求模型"""
     question: str = Field(..., min_length=1, max_length=1000, description="用户问题")
-    language: Optional[str] = Field("zh-CN", description="语言代码")
+    language: Optional[str] = Field("en", description="语言代码")
+    divination_type: Optional[str] = Field("tarot", description="占卜类型：general, tarot, astrology等")
     session_id: Optional[str] = Field(None, description="会话ID")
 
 
@@ -116,8 +117,8 @@ class DivinationBase(BaseModel):
     
     question: str
     answer: str
-    model_used: str = "deepseek/deepseek-chat-v3-0324"
-    language: str = "zh-CN"
+    model_used: str = "deepseek/deepseek-chat"
+    language: str = "en"  # 默认改为英语
 
 
 class DivinationCreate(DivinationBase):

@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://postgres:12345678@divination.cluster-chwuqka62eu2.ap-southeast-2.rds.amazonaws.com:5432/divination_db"
     
     # OpenRouter API 配置
-    openrouter_api_key: str = "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"
+    openrouter_api_key: str = "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"
     
     # JWT 配置
     secret_key: str = "your_secret_key_here_change_in_production"
@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     
     # OpenRouter 配置
     openrouter_referer: str = "http://localhost:3000"
+    openrouter_site_name: str = "FateWave"
     
     # 业务配置
     free_usage_limit: int = 50  # 登录用户50次免费

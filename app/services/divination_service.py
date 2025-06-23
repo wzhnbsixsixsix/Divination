@@ -53,7 +53,8 @@ class DivinationService:
         self,
         db: Session,
         question: str,
-        language: str = "zh-CN",
+        language: str = "en",
+        divination_type: str = "tarot",
         user_id: Optional[int] = None,
         session_id: Optional[str] = None,
         user_ip: Optional[str] = None,
@@ -61,26 +62,32 @@ class DivinationService:
     ) -> Divination:
         """创建占卜记录"""
         
+        print(f"🎯 [调试] 创建占卜记录: question='{question}', language='{language}', divination_type='{divination_type}'")
+        
         # 1. 检查使用限制
         can_use, remaining = await self.check_usage_limit(db, user_id, session_id)
         if not can_use:
             raise ValueError("已达到免费使用次数限制，请升级为高级用户")
         
-        # 2. 调用占卜API获取结果
+        # 2. 调用占卜API获取结果 - 使用传入的divination_type
         try:
+            print(f"📞 [调试] 调用OpenRouter服务获取占卜结果...")
             answer, prompt_info = await openrouter_service.get_divination_response(
                 db=db,
                 question=question,
                 language=language,
-                divination_type="tarot"
+                divination_type=divination_type
             )
+            
+            print(f"📋 [调试] 提示词信息: {prompt_info}")
             
             if not answer:
                 # 如果API调用失败，使用备用回答
                 answer = f"根据您的问题「{question}」，我为您解读如下：\n\n当前的情况需要您保持耐心和信心。虽然前路可能充满不确定性，但正是这种不确定性为您带来了无限的可能性。\n\n建议您：\n1. 保持积极的心态\n2. 相信自己的直觉\n3. 适时寻求他人的建议\n4. 把握当下的机会\n\n请记住，命运掌握在您自己的手中。"
+                print(f"⚠️ [调试] API调用失败，使用备用回答")
                 
         except Exception as e:
-            print(f"OpenRouter API调用失败: {e}")
+            print(f"💥 [调试] OpenRouter API调用异常: {e}")
             # 使用备用回答
             answer = f"根据您的问题「{question}」，我为您解读如下：\n\n当前的情况需要您保持耐心和信心。虽然前路可能充满不确定性，但正是这种不确定性为您带来了无限的可能性。\n\n建议您：\n1. 保持积极的心态\n2. 相信自己的直觉\n3. 适时寻求他人的建议\n4. 把握当下的机会\n\n请记住，命运掌握在您自己的手中。"
         

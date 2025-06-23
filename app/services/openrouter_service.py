@@ -10,17 +10,39 @@ class OpenRouterService:
     """OpenRouter API 服务类"""
     
     def __init__(self):
-        self.api_key = settings.openrouter_api_key
+        # 临时硬编码新的API密钥
+        self.api_key = "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"
         self.base_url = "https://openrouter.ai/api/v1"
+        
+        # 验证API密钥
+        print("=" * 100)
+        print("🔐 [OpenRouter初始化] API密钥验证:")
+        print(f"    完整API密钥: {self.api_key}")
+        print(f"    API密钥前20位: {self.api_key[:20]}...")
+        print(f"    API密钥长度: {len(self.api_key)}")
+        
+        if not self.api_key.startswith("sk-or-v1-e375b1cb"):
+            print("❌ [警告] API密钥不正确！应该以 'sk-or-v1-e375b1cb' 开头")
+        else:
+            print("✅ [验证通过] API密钥格式正确")
+        
+        # 正确设置请求头，确保包含必需的 HTTP-Referer 和 X-Title
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": "http://localhost:3000",
-            "X-Title": "FateWave",
+            "HTTP-Referer": "http://localhost:3000",  # 必需：网站URL
+            "X-Title": "FateWave",                    # 必需：网站名称
             "Content-Type": "application/json"
         }
+        
+        print(f"🌐 [OpenRouter初始化] HTTP-Referer: http://localhost:3000")
+        print(f"🏷️ [OpenRouter初始化] X-Title: FateWave")
+        print("=" * 100)
     
-    def get_prompt_from_db(self, db: Session, divination_type: str = "tarot", language: str = "en"):
+    def get_prompt_from_db(self, db: Session, divination_type: str = "general", language: str = "zh-CN"):
         """从数据库获取提示词模板"""
+        print("=" * 100)
+        print(f"🔍 [调试] 查找提示词参数: divination_type='{divination_type}', language='{language}'")
+        
         # 首先尝试获取指定类型的提示词
         prompt_template = db.query(PromptTemplate).filter(
             PromptTemplate.divination_type == divination_type,
@@ -28,25 +50,67 @@ class OpenRouterService:
             PromptTemplate.is_active == True
         ).order_by(PromptTemplate.is_default.desc()).first()
         
-        if not prompt_template:
+        if prompt_template:
+            print(f"✅ [调试] 找到数据库提示词模板:")
+            print(f"    ID: {prompt_template.id}")
+            print(f"    名称: '{prompt_template.name}'")
+            print(f"    类型: '{prompt_template.divination_type}'")
+            print(f"    语言: '{prompt_template.language}'")
+            print(f"    版本: {prompt_template.version}")
+            print(f"    是否默认: {prompt_template.is_default}")
+            print(f"    Temperature: {prompt_template.temperature}")
+            print(f"    Max Tokens: {prompt_template.max_tokens}")
+            print("=" * 50)
+            print("📝 [系统提示词内容]:")
+            print(prompt_template.system_prompt)
+            print("=" * 50)
+            print("📝 [用户模板内容]:")
+            print(prompt_template.user_template)
+            print("=" * 100)
+        else:
+            print(f"❌ [调试] 未找到指定类型提示词 (type='{divination_type}', lang='{language}')，尝试查找通用类型...")
+            
             # 如果没找到，尝试获取通用类型
             prompt_template = db.query(PromptTemplate).filter(
                 PromptTemplate.divination_type == "general",
                 PromptTemplate.language == language,
                 PromptTemplate.is_active == True
             ).first()
+            
+            if prompt_template:
+                print(f"✅ [调试] 找到通用类型提示词:")
+                print(f"    ID: {prompt_template.id}")
+                print(f"    名称: '{prompt_template.name}'")
+                print(f"    类型: '{prompt_template.divination_type}'")
+                print(f"    语言: '{prompt_template.language}'")
+                print("=" * 50)
+                print("📝 [系统提示词内容]:")
+                print(prompt_template.system_prompt)
+                print("=" * 50)
+                print("📝 [用户模板内容]:")
+                print(prompt_template.user_template)
+                print("=" * 100)
+            else:
+                print(f"❌ [调试] 数据库中未找到任何提示词模板 (lang='{language}')，使用硬编码备用提示词")
+                print("⚠️ [调试] 建议运行: python init_prompts.py 来初始化提示词模板")
+                print("=" * 100)
         
         if not prompt_template:
             # 如果还是没找到，返回硬编码的备用提示词
-            print(f"⚠️ 数据库中未找到提示词模板 (type: {divination_type}, lang: {language})，使用备用提示词")
-            return self.get_fallback_prompts(language)
+            print(f"⚠️ [调试] 使用硬编码备用提示词 (language='{language}')")
+            fallback_prompts = self.get_fallback_prompts(language)
+            print("📝 [硬编码备用提示词内容]:")
+            print(fallback_prompts["system"])
+            print("=" * 100)
+            return fallback_prompts
         
-        print(f"✅ 使用数据库提示词模板: {prompt_template.name}")
+        print(f"✅ [调试] 最终使用数据库提示词模板: '{prompt_template.name}'")
         
         return {
             "system": prompt_template.system_prompt,
             "user_template": prompt_template.user_template,
             "template_id": prompt_template.id,
+            "template_name": prompt_template.name,
             "temperature": float(prompt_template.temperature),
             "max_tokens": prompt_template.max_tokens
         }
@@ -185,28 +249,59 @@ Using the markdown syntax, the generated divination answer must be segmented in 
         start_time = time.time()
         
         try:
+            print("\n" + "🚀" * 50)
+            print(f"🚀 [调试] 开始获取占卜回答:")
+            print(f"    问题: '{question}'")
+            print(f"    语言: '{language}'")
+            print(f"    占卜类型: '{divination_type}'")
+            print(f"    使用模型: '{model}'")
+            print("🚀" * 50)
+            
             # 从数据库获取提示词
             prompts = self.get_prompt_from_db(db, divination_type, language)
+            
+            # 构建最终发送给AI的消息
+            final_system_prompt = prompts["system"]
+            final_user_prompt = prompts["user_template"].format(question=question)
+            
+            print("📤 [最终发送给AI的消息]:")
+            print("系统提示词长度:", len(final_system_prompt), "字符")
+            print("用户消息:", final_user_prompt)
+            print("-" * 80)
+            
+            # 详细的API认证调试信息
+            print("🔑 [API认证调试]:")
+            print(f"    API Key: {self.api_key[:20]}...")
+            print(f"    Base URL: {self.base_url}")
+            print(f"    请求头内容:")
+            for key, value in self.headers.items():
+                if key == "Authorization":
+                    print(f"      {key}: Bearer {value.split(' ')[1][:20]}...")
+                else:
+                    print(f"      {key}: {value}")
+            print("-" * 80)
             
             payload = {
                 "model": model,
                 "messages": [
                     {
                         "role": "system",
-                        "content": prompts["system"]
+                        "content": final_system_prompt
                     },
                     {
                         "role": "user", 
-                        "content": prompts["user_template"].format(question=question)
+                        "content": final_user_prompt
                     }
                 ],
                 "temperature": prompts["temperature"],
                 "max_tokens": prompts["max_tokens"]
             }
             
-            # 打印调试信息
-            print(f"发送到OpenRouter的请求头: {self.headers}")
-            print(f"使用的模型: {model}")
+            print(f"🔧 [调试] API请求参数:")
+            print(f"    Temperature: {prompts['temperature']}")
+            print(f"    Max Tokens: {prompts['max_tokens']}")
+            print(f"    模型: {model}")
+            print(f"    请求URL: {self.base_url}/chat/completions")
             
             response = requests.post(
                 f"{self.base_url}/chat/completions",
@@ -215,9 +310,7 @@ Using the markdown syntax, the generated divination answer must be segmented in 
                 timeout=30
             )
             
-            print(f"OpenRouter响应状态码: {response.status_code}")
-            if response.status_code != 200:
-                print(f"OpenRouter错误响应: {response.text}")
+            print(f"📡 [调试] OpenRouter响应状态码: {response.status_code}")
             
             response_time = int((time.time() - start_time) * 1000)
             
@@ -225,30 +318,54 @@ Using the markdown syntax, the generated divination answer must be segmented in 
                 result = response.json()
                 answer = result["choices"][0]["message"]["content"]
                 
+                print(f"✅ [调试] 获取回答成功:")
+                print(f"    回答长度: {len(answer)} 字符")
+                print(f"    响应时间: {response_time}ms")
+                print(f"    Token使用: {result.get('usage', {}).get('total_tokens', 0)}")
+                print("-" * 80)
+                print("📝 [AI回答内容]:")
+                print(answer)
+                print("=" * 100)
+                
                 return answer, {
-                    "template_id": prompts["template_id"],
+                    "template_id": prompts.get("template_id"),
+                    "template_name": prompts.get("template_name", "硬编码备用提示词"),
                     "response_time_ms": response_time,
                     "token_count": result.get("usage", {}).get("total_tokens", 0),
                     "success": True,
-                    "actual_system_prompt": prompts["system"],
-                    "actual_user_prompt": prompts["user_template"].format(question=question)
+                    "divination_type": divination_type,
+                    "language": language
                 }
             else:
                 error_msg = f"OpenRouter API 错误: {response.status_code} - {response.text}"
-                print(error_msg)
+                print(f"❌ [调试] {error_msg}")
+                print("🔍 [调试] 响应详情:")
+                try:
+                    error_data = response.json()
+                    print(f"    错误类型: {error_data.get('error', {}).get('type', 'Unknown')}")
+                    print(f"    错误消息: {error_data.get('error', {}).get('message', 'Unknown')}")
+                    print(f"    错误代码: {error_data.get('error', {}).get('code', 'Unknown')}")
+                except:
+                    print(f"    原始响应: {response.text}")
+                print("=" * 100)
                 raise Exception(error_msg)
             
         except Exception as e:
             response_time = int((time.time() - start_time) * 1000)
             error_msg = str(e)
-            print(f"OpenRouter API 调用失败: {error_msg}")
+            print(f"💥 [调试] OpenRouter API 调用失败: {error_msg}")
+            print(f"    响应时间: {response_time}ms")
+            print("=" * 100)
             
             return None, {
                 "template_id": None,
+                "template_name": "调用失败",
                 "response_time_ms": response_time,
                 "token_count": 0,
                 "success": False,
-                "error_message": error_msg
+                "error_message": error_msg,
+                "divination_type": divination_type,
+                "language": language
             }
     
     def test_connection(self) -> bool:

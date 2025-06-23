@@ -27,9 +27,19 @@ async def create_divination(
     创建占卜请求
     
     - **question**: 用户问题（必填）
-    - **language**: 语言代码，默认zh-CN
+    - **language**: 语言代码，默认en
+    - **divination_type**: 占卜类型，默认tarot
     - **session_id**: 会话ID，用于匿名用户识别
     """
+    print("=" * 100)
+    print("🚨🚨🚨 DIVINATION REQUEST RECEIVED 🚨🚨🚨")
+    print(f"🌟 [路由调试] 收到占卜请求:")
+    print(f"    问题: '{request_data.question}'")
+    print(f"    语言: '{request_data.language}'")
+    print(f"    占卜类型: '{request_data.divination_type}'")
+    print(f"    会话ID: '{request_data.session_id}'")
+    print("=" * 100)
+    
     try:
         client_info = get_client_info(request)
         
@@ -38,15 +48,20 @@ async def create_divination(
         if not session_id:
             session_id = divination_service.generate_session_id()
         
+        print(f"🔑 [路由调试] 使用session_id: {session_id}")
+        
         # 创建占卜记录
         divination = await divination_service.create_divination(
             db=db,
             question=request_data.question,
-            language=request_data.language,
+            language=request_data.language,  
+            divination_type=request_data.divination_type,
             session_id=session_id,
             user_ip=client_info["user_ip"],
             user_agent=client_info["user_agent"]
         )
+        
+        print(f"✅ [路由调试] 占卜完成: answer='{divination.answer[:100]}...'")
         
         return APIResponse(
             success=True,
@@ -61,8 +76,10 @@ async def create_divination(
         )
         
     except ValueError as e:
+        print(f"❌ [路由调试] ValueError: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        print(f"💥 [路由调试] Exception: {e}")
         raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
 
