@@ -1,0 +1,40 @@
+from pydantic import BaseSettings
+from typing import List
+import os
+
+
+class Settings(BaseSettings):
+    # 数据库配置
+    database_url: str = "postgresql://username:password@localhost:5432/divination_db"
+    
+    # OpenRouter API 配置
+    openrouter_api_key: str = "your_api_key_here"
+    
+    # JWT 配置
+    secret_key: str = "your_secret_key_here"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    
+    # 应用配置
+    app_name: str = "FateWave API"
+    debug: bool = True
+    cors_origins: str = "http://localhost:3000,https://fatewave.com"
+    
+    # OpenRouter 配置
+    openrouter_referer: str = "http://localhost:3000"  # 开发环境用localhost，生产环境用域名
+    
+    # 业务配置
+    free_usage_limit: int = 3
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """将CORS_ORIGINS字符串转换为列表"""
+        return [origin.strip() for origin in self.cors_origins.split(',')]
+
+
+# 全局配置实例
+settings = Settings() 
